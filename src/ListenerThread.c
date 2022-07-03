@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 void *ListenerThread(void *arg) {
     ListenerThread_arg_t *args = (ListenerThread_arg_t *) arg;
@@ -56,37 +57,43 @@ void *ListenerThread(void *arg) {
         input = getc(stdin);
         pthread_mutex_unlock(args->stdin_mutex);
 
-        snprintf(msg, 2, "%c", input);
+        /* Check if the input char is valid.
+         * Valid chars are 0-9, A-Z, _ and space.
+         */
+        if (isalnum(input) || input == '_' || input == ' ') {
 
-        if (mq_send(block_queue, msg, strlen(msg), 0) != 0) {
-            if (errno != EAGAIN) { /* Don't terminate the thread if the queue is full */
+            snprintf(msg, 2, "%c", input);
 
-                pthread_mutex_lock(args->stderr_mutex);
-                perror("ListenerThread 3");
-                pthread_mutex_unlock(args->stderr_mutex);
+            if (mq_send(block_queue, msg, strlen(msg), 0) != 0) {
+                if (errno != EAGAIN) { /* Don't terminate the thread if the queue is full */
 
-                mq_close(block_queue);
-                mq_close(stream_queue);
-                pthread_exit(NULL);
+                    pthread_mutex_lock(args->stderr_mutex);
+                    perror("ListenerThread 3");
+                    pthread_mutex_unlock(args->stderr_mutex);
+
+                    mq_close(block_queue);
+                    mq_close(stream_queue);
+                    pthread_exit(NULL);
+                }
             }
-        }
 
-        sem_post(block_sem);
+            sem_post(block_sem);
 
-        if (mq_send(stream_queue, msg, strlen(msg), 0) != 0) {
-            if (errno != EAGAIN) { /* Don't terminate the thread if the queue is full */
+            if (mq_send(stream_queue, msg, strlen(msg), 0) != 0) {
+                if (errno != EAGAIN) { /* Don't terminate the thread if the queue is full */
 
-                pthread_mutex_lock(args->stderr_mutex);
-                perror("ListenerThread 4");
-                pthread_mutex_unlock(args->stderr_mutex);
+                    pthread_mutex_lock(args->stderr_mutex);
+                    perror("ListenerThread 4");
+                    pthread_mutex_unlock(args->stderr_mutex);
 
-                mq_close(block_queue);
-                mq_close(stream_queue);
-                pthread_exit(NULL);
+                    mq_close(block_queue);
+                    mq_close(stream_queue);
+                    pthread_exit(NULL);
+                }
             }
-        }
 
-        sem_post(stream_sem);
+            sem_post(stream_sem);
+        }
     }
 
     return NULL;
