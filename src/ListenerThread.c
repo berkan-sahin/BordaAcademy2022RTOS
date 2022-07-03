@@ -17,22 +17,30 @@ void *ListenerThread(void *arg) {
     mqd_t block_queue, stream_queue;
     sem_t *block_sem, *stream_sem;
 
-    block_queue = mq_open(args->block_mq_name, O_CREAT | O_WRONLY);
-    stream_queue = mq_open(args->stream_mq_name, O_CREAT | O_WRONLY);
+    block_queue = mq_open(args->block_mq_name, O_CREAT | O_WRONLY,
+                          S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP,
+                          args->queue_attrs);
+    stream_queue = mq_open(args->stream_mq_name, O_CREAT | O_WRONLY,
+                           S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP,
+                           args->queue_attrs);
 
     if (block_queue == -1 || stream_queue == -1) {
         pthread_mutex_lock(args->stderr_mutex);
-        perror("ListenerThread");
+        perror("ListenerThread 1");
         pthread_mutex_unlock(args->stderr_mutex);
         pthread_exit(NULL);
     }
 
-    block_sem = sem_open(args->block_sem_name, O_CREAT | O_WRONLY);
-    stream_sem = sem_open(args->stream_sem_name, O_CREAT | O_WRONLY);
+    block_sem = sem_open(args->block_sem_name, O_CREAT | O_WRONLY,
+                         S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP,
+                         0);
+    stream_sem = sem_open(args->stream_sem_name, O_CREAT | O_WRONLY,
+                          S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP,
+                          0);
 
     if (block_sem == SEM_FAILED || stream_sem == SEM_FAILED) {
         pthread_mutex_lock(args->stderr_mutex);
-        perror("ListenerThread");
+        perror("ListenerThread 2");
         pthread_mutex_unlock(args->stderr_mutex);
 
         mq_close(block_queue);
@@ -54,7 +62,7 @@ void *ListenerThread(void *arg) {
             if (errno != EAGAIN) { /* Don't terminate the thread if the queue is full */
 
                 pthread_mutex_lock(args->stderr_mutex);
-                perror("ListenerThread");
+                perror("ListenerThread 3");
                 pthread_mutex_unlock(args->stderr_mutex);
 
                 mq_close(block_queue);
@@ -69,7 +77,7 @@ void *ListenerThread(void *arg) {
             if (errno != EAGAIN) { /* Don't terminate the thread if the queue is full */
 
                 pthread_mutex_lock(args->stderr_mutex);
-                perror("ListenerThread");
+                perror("ListenerThread 4");
                 pthread_mutex_unlock(args->stderr_mutex);
 
                 mq_close(block_queue);
