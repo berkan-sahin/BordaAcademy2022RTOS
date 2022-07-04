@@ -3,7 +3,7 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include "ListenerThread.h"
-
+#include "StreamThread.h"
 
 typedef struct {
     const char *sem_name;
@@ -95,6 +95,14 @@ int main() {
             .queue_attrs = &queue_attrs
     };
 
+    StreamThread_arg_t stream_thread_args = {
+        .mq_name = "/streammq",
+        .sem_name = "/streamsem",
+        .queue_attrs = &queue_attrs,
+        .stdout_mutex = &stdout_mutex,
+        .stderr_mutex = &stderr_mutex
+    };
+/*
     DummyThread_arg_t stream_thread_args = {
             .stderr_mutex = &stderr_mutex,
             .stdout_mutex = &stdout_mutex,
@@ -103,7 +111,7 @@ int main() {
             .sem_name = "/streamsem",
             .queue_attrs = &queue_attrs
     };
-
+*/
     DummyThread_arg_t block_thread_args = {
             .stderr_mutex = &stderr_mutex,
             .stdout_mutex = &stdout_mutex,
@@ -115,7 +123,7 @@ int main() {
 
     pthread_create(&listener, NULL, ListenerThread, &lt_args);
     pthread_create(&block_thread, NULL, DummyThread, &block_thread_args);
-    pthread_create(&stream_thread, NULL, DummyThread, &stream_thread_args);
+    pthread_create(&stream_thread, NULL, StreamThread, &stream_thread_args);
 
     /* Wait for the threads to finish */
     pthread_join(listener, NULL);
