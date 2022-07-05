@@ -17,7 +17,13 @@ typedef struct {
 
 void BlockThreadCleanup(void *arg) {
     cleanup_arg_t *args = (cleanup_arg_t*) arg;
-    /* TODO */
+
+    mq_close(args->mq_handle);
+    mq_unlink(args->mq_name);
+    sem_close(args->queue_sem_handle);
+    sem_unlink(args->queue_sem_name);
+    sem_close(args->buffer_sem_handle);
+    sem_unlink(args->buffer_sem_name);
 }
 
 void *BlockThread(void *arg) {
