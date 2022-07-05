@@ -62,11 +62,10 @@ void *DummyThread(void *arg) {
             pthread_exit(NULL);
         }
 
-        /* TODO Quit if the message is "q" */
-
+        /* Quit if the message is "q" */
         if (msgbuf[0] == 'q') {
             pthread_mutex_lock(args->stdout_mutex);
-            printf("Received \"q\", quitting...");
+            printf("Received \"q\", quitting...\n");
             pthread_mutex_unlock(args->stdout_mutex);
 
             pthread_cancel(*args->listener_handle);
