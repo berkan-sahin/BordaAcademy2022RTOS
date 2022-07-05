@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include "ListenerThread.h"
 #include "StreamThread.h"
+#include "BlockThread.h"
 
 /*
 typedef struct {
@@ -79,29 +80,40 @@ void *DummyThread(void *arg) {
 */
 
 int main() {
+    pthread_t listener, stream_thread, block_thread;
+    struct mq_attr queue_attrs;
 
     /* I/O mutexes */
     pthread_mutex_t stderr_mutex, stdin_mutex, stdout_mutex;
-    pthread_t listener, stream_thread, block_thread;
+
     /* Shared buffers */
     char block_buffer[512];
+    char command_buffer[512];
     const int BUFFER_SIZE = 512;
     pthread_mutex_t block_buf_mutex, command_buf_mutex;
+
+    /* queue/semaphore names */
     const char *BLOCK_SEM_NAME = "/block_input";
+    const char *STREAM_SEM_NAME = "/stream_input";
     const char *BLOCK_MQ_NAME = "/blockmq";
+    const char *STREAM_MQ_NAME = "/streammq";
     const char *BLOCKBUF_SEM_NAME = "/blockbuf_ready";
+    const char *COMMANDBUF_SEM_NAME = "/commandbuf_ready";
+
+
     pthread_mutex_init(&stderr_mutex, NULL);
     pthread_mutex_init(&stdin_mutex, NULL);
     pthread_mutex_init(&stdout_mutex, NULL);
     pthread_mutex_init(&block_buf_mutex, NULL);
+
 
     queue_attrs.mq_msgsize = 2;
     queue_attrs.mq_maxmsg = 8;
 
     ListenerThread_arg_t lt_args = {
             .block_sem_name = BLOCK_SEM_NAME,
-            .stream_sem_name = "/streamsem",
-            .stream_mq_name = "/streammq",
+            .stream_sem_name = STREAM_SEM_NAME,
+            .stream_mq_name = STREAM_MQ_NAME,
             .block_mq_name = BLOCK_MQ_NAME,
             .stderr_mutex = &stderr_mutex,
             .stdin_mutex = &stdin_mutex,
@@ -109,14 +121,17 @@ int main() {
     };
 
     StreamThread_arg_t stream_thread_args = {
-        .mq_name = "/streammq",
-        .sem_name = "/streamsem",
+        .mq_name = STREAM_MQ_NAME,
+        .sem_name = STREAM_SEM_NAME,
         .queue_attrs = &queue_attrs,
         .stdout_mutex = &stdout_mutex,
         .stderr_mutex = &stderr_mutex
     };
 
     BlockThread_arg_t block_thread_args = {
+            .mq_name = BLOCK_MQ_NAME,
+            .queue_sem_name = BLOCK_SEM_NAME,
+            .queue_attrs = &queue_attrs,
             .stderr_mutex = &stderr_mutex,
             .buffer_sem_name = BLOCKBUF_SEM_NAME,
             .buffer = block_buffer,
