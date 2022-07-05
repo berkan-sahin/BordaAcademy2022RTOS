@@ -8,10 +8,11 @@
 typedef struct {
     const char *sem_name;
     const char *mq_name;
-    const char *thread_name;
     struct mq_attr *queue_attrs;
     pthread_mutex_t *stdout_mutex;
     pthread_mutex_t *stderr_mutex;
+    pthread_t *listener_handle;
+    pthread_t *stream_handle;
 } DummyThread_arg_t;
 
 /**
@@ -61,11 +62,18 @@ void *DummyThread(void *arg) {
             pthread_exit(NULL);
         }
 
-        pthread_mutex_lock(args->stdout_mutex);
-        printf("%s received %s\n", args->thread_name, msgbuf);
-        pthread_mutex_unlock(args->stdout_mutex);
-
         /* TODO Quit if the message is "q" */
+
+        if (msgbuf[0] == 'q') {
+            pthread_mutex_lock(args->stdout_mutex);
+            printf("Received \"q\", quitting...");
+            pthread_mutex_unlock(args->stdout_mutex);
+
+            pthread_cancel(*args->listener_handle);
+            pthread_cancel(*args->stream_handle);
+            pthread_exit(NULL);
+        }
+
     }
 
 
@@ -102,23 +110,15 @@ int main() {
         .stdout_mutex = &stdout_mutex,
         .stderr_mutex = &stderr_mutex
     };
-/*
-    DummyThread_arg_t stream_thread_args = {
-            .stderr_mutex = &stderr_mutex,
-            .stdout_mutex = &stdout_mutex,
-            .thread_name = "Dummy stream thread",
-            .mq_name = "/streammq",
-            .sem_name = "/streamsem",
-            .queue_attrs = &queue_attrs
-    };
-*/
+
     DummyThread_arg_t block_thread_args = {
             .stderr_mutex = &stderr_mutex,
             .stdout_mutex = &stdout_mutex,
-            .thread_name = "Dummy block thread",
             .mq_name = "/blockmq",
             .sem_name = "/blocksem",
-            .queue_attrs = &queue_attrs
+            .queue_attrs = &queue_attrs,
+            .stream_handle = &stream_thread,
+            .listener_handle = &listener
     };
 
     pthread_create(&listener, NULL, ListenerThread, &lt_args);

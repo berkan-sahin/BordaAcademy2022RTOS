@@ -6,6 +6,22 @@
 #include <semaphore.h>
 #include <stdio.h>
 
+typedef struct {
+    mqd_t mq_handle;
+    sem_t *sem_handle;
+    const char *mq_name;
+    const char *sem_name;
+} cleanup_arg_t;
+
+void StreamCleanup(void *arg) {
+    cleanup_arg_t *args = (cleanup_arg_t*) arg;
+
+    mq_close(args->mq_handle);
+    mq_unlink(args->mq_name);
+    sem_close(args->sem_handle);
+    sem_unlink(args->sem_name);
+}
+
 void *StreamThread(void *arg) {
     /* The table used for stream encoding.
      * The values are arbitrary */
@@ -42,6 +58,17 @@ void *StreamThread(void *arg) {
         pthread_exit(NULL);
     }
 
+    /* Set up cleanup routine */
+
+    cleanup_arg_t cleanupArg = {
+            .sem_handle = mq_sem,
+            .mq_name = args->mq_name,
+            .mq_handle = input_mq,
+            .sem_name = args->sem_name
+    };
+
+    pthread_cleanup_push(StreamCleanup, &cleanupArg);
+
     while (1) {
         /* Block until new message arrives */
         sem_wait(mq_sem);
@@ -67,6 +94,8 @@ void *StreamThread(void *arg) {
 
 
     }
+
+    pthread_cleanup_pop(1);
 
     return NULL;
 }
